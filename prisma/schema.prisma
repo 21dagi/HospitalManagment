@@ -1,0 +1,261 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = "postgresql://postgres:password@localhost:5432/emr"
+  // directUrl = env("DIRECT_URL")
+}
+
+model Patient {
+  id                       String          @id @default(uuid())
+  firstName                String
+  middleName               String
+  lastName                 String
+  sex                      Sex
+  birthDate                DateTime
+  region                   String
+  city                     String
+  woreda                   String
+  kebele                   String?
+  mobileNumber             String          @unique
+  password                 String
+  email                    String?         @unique
+  occupation               String?
+  emergencyContactName     String?
+  emergencyContactMobileNo String?
+  patientRecord            PatientRecord?
+  appointments             Appointment[]
+  invoices                 Invoice[]
+  medicalRecords           MedicalRecord[]
+  Doctor                   Doctor[]
+}
+
+model PatientRecord {
+  id               String   @id @default(uuid())
+  patientType      String   @default("Out")
+  patientCondition String
+  allergies        String[]
+  familyHistory    String?
+  height           Float?
+  weight           Float?
+  bloodPressure    String?
+  temperature      Float?
+  bloodType        String?
+  patient          Patient  @relation(fields: [patientId], references: [id])
+  patientId        String   @unique
+}
+
+model Appointment {
+  id            String            @id @default(uuid())
+  type          String            @default("Consultation")
+  status        AppointmentStatus @default(Scheduled)
+  datetime      DateTime
+  scheduledAt   DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  patient       Patient           @relation(fields: [patientId], references: [id])
+  patientId     String
+  doctor        Doctor            @relation(fields: [doctorId], references: [id])
+  doctorId      String
+  MedicalRecord MedicalRecord?
+
+  @@unique([datetime, doctorId])
+}
+
+model Staff {
+  id               String           @id @default(uuid())
+  username         String           @unique
+  password         String
+  firstName        String
+  middleName       String
+  lastName         String
+  sex              Sex
+  birthDate        DateTime
+  region           String
+  city             String
+  woreda           String
+  kebele           Int?
+  mobileNumber     String           @unique
+  email            String           @unique
+  role             Role             @relation(fields: [roleId], references: [id])
+  hireDate         DateTime         @default(now())
+  emergencyContact String?
+  employmentStatus EmploymentStatus
+  notes            String[]
+  doctor           Doctor?
+  department       Department?      @relation(fields: [departmentId], references: [id])
+  departmentId     String?
+  roleId           String
+}
+
+model Doctor {
+  id             String          @id @default(uuid())
+  specialization String?
+  workingHours   WorkingHours[]
+  patients       Patient[]
+  staff          Staff           @relation(fields: [staffId], references: [id])
+  staffId        String          @unique
+  appointments   Appointment[]
+  MedicalRecord  MedicalRecord[]
+}
+
+model WorkingHours {
+  id       String @id @default(uuid())
+  date     String
+  from     Int
+  to       Int
+  doctor   Doctor @relation(fields: [doctorId], references: [id])
+  doctorId String
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  staff       Staff[]
+  permissions Permission[]
+}
+
+model Department {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  staff       Staff[]
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  role        Role    @relation(fields: [roleId], references: [id])
+  roleId      String
+}
+
+model OTP {
+  mobileNumber String
+  passcode     String
+
+  @@unique([mobileNumber, passcode])
+}
+
+model Prescription {
+  id              String        @id @default(uuid())
+  dosage          String
+  duration        Int
+  quantity        Int           @default(1)
+  instruction     String?
+  medication      Medication    @relation(fields: [medicationId], references: [id])
+  medicationId    String
+  MedicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  medicalRecordId String
+}
+
+model Medication {
+  id                 String               @id @default(uuid())
+  name               String
+  description        String?
+  price              Float
+  available          Int
+  invoice_Medication Invoice_Medication[]
+  Prescription       Prescription[]
+}
+
+model Invoice_Medication {
+  id           String     @id @default(uuid())
+  quantity     Int        @default(1)
+  invoice      Invoice    @relation(fields: [invoiceId], references: [id])
+  medication   Medication @relation(fields: [medicationId], references: [id])
+  invoiceId    String
+  medicationId String
+
+  @@unique([invoiceId, medicationId])
+}
+
+model Service {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String
+  price       Float
+  invoices    Invoice[]
+}
+
+model Invoice {
+  id                 String               @id @default(uuid())
+  status             InvoiceStatus        @default(Unpaid)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  patient            Patient              @relation(fields: [patientId], references: [id])
+  services           Service[]
+  patientId          String
+  Invoice_Medication Invoice_Medication[]
+}
+
+model MedicalRecord {
+  id                String         @id @default(uuid())
+  diagnosis         String[]
+  treatmentPlan     String?
+  medicalProcedures Json?
+  notes             String?
+  symptoms          String[]
+  prescription      Prescription[]
+  medsInstruction   String?
+  labResults        LabResult[]
+  appointment       Appointment    @relation(fields: [appointmentId], references: [id])
+  appointmentId     String         @unique
+  patient           Patient        @relation(fields: [patientId], references: [id])
+  patientId         String
+  doctor            Doctor         @relation(fields: [doctorId], references: [id])
+  doctorId          String         @default("84217cb9-4af4-4a92-941d-3d26fb64e2de")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  Symptom           Symptom?       @relation(fields: [symptomId], references: [id])
+  symptomId         String?
+}
+
+model Symptom {
+  id            String          @id @default(uuid())
+  name          String          @unique
+  description   String?
+  medicalRecord MedicalRecord[]
+}
+
+model LabResult {
+  id              String        @id @default(uuid())
+  //Add Lab result description
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  medicalRecordId String
+}
+
+model Diseases {
+  id   String @id @default(uuid())
+  name String @unique
+}
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum EmploymentStatus {
+  Active
+  OnLeave
+  Retired
+}
+
+enum InvoiceStatus {
+  Paid
+  Unpaid
+}
+
+enum AppointmentStatus {
+  Scheduled
+  InProgress
+  Completed
+  CheckedIn
+}
